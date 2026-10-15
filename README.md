@@ -8,8 +8,8 @@
 
 1.  **Клонирование репозитория:**
     ```bash
-    git clone <ссылка_на_ваш_репозиторий>
-    cd project#2_<фамилия>_<группа>
+    git clone https://github.com/dvorovskoy/project-2_Vorovskoy_26-555
+    cd project-2_Vorovskoy_26-555
     ```
 
 2.  **Установка зависимостей:**
