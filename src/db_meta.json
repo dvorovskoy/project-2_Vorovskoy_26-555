@@ -2,7 +2,8 @@
   "users": {
     "columns": {
       "ID": "int",
-      "name": "str"
+      "name": "str",
+      "age": "int"
     }
   }
 }

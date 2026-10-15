@@ -7,10 +7,12 @@ authors = [
     { name = "Denis Vorovskoy", email = "denis.vorovskoy@gmail.com" }
 ]
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "prettytable>=3.18.0",
+]
 
 [project.scripts]
-project = "primitive_db.main:main"
+database = "primitive_db.main:main"
 
 [build-system]
 requires = ["uv_build>=0.12.19,<0.13.0"]
