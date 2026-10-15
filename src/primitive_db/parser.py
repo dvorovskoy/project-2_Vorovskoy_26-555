@@ -1,5 +1,6 @@
 import shlex
 
+
 def parse_where(where_str: str) -> dict:
     """Превращает 'age = 28' в {'age': 28}"""
     if not where_str:

@@ -1,9 +1,8 @@
-# src/primitive_db/core.py
-import json
 import os
-from .constants import VALID_TYPES, DATA_DIR, META_FILE
-from .utils import load_table_data, save_table_data, save_metadata
-from .decorators import handle_db_errors, log_time, confirm_action, create_cacher
+
+from .constants import DATA_DIR, VALID_TYPES
+from .decorators import confirm_action, create_cacher, handle_db_errors, log_time
+from .utils import load_table_data, save_metadata, save_table_data
 
 # Создаем экземпляр кэшера для функции select
 select_cache = create_cacher()
@@ -51,7 +50,7 @@ def list_tables(metadata: dict) -> None:
     if not metadata:
         print("(список таблиц пуст)")
     else:
-        for name in metadata.keys():
+        for name in metadata:
             print(f"- {name}")
 
 @handle_db_errors
@@ -74,7 +73,7 @@ def insert(metadata: dict, table_name: str, values: list) -> list:
     else:
         new_id = 1
 
-    col_names = [name for name in schema.keys() if name != "ID"]
+    col_names = [name for name in schema if name != "ID"]
     record = {"ID": new_id}
 
     for i, value in enumerate(values):
@@ -113,7 +112,7 @@ def insert(metadata: dict, table_name: str, values: list) -> list:
 
 @handle_db_errors
 @log_time
-def select(table_data: list, where_clause: dict = None) -> list:
+def select(table_data: list, where_clause: dict | None = None) -> list:
     # Ключ для кэша: строковое представление условия
     cache_key = str(where_clause) if where_clause else "ALL_DATA"
 
@@ -135,7 +134,6 @@ def select(table_data: list, where_clause: dict = None) -> list:
 
 @handle_db_errors
 def update(table_data: list, set_clause: dict, where_clause: dict) -> list:
-    updated = False
     for row in table_data:
         match = True
         for key, value in where_clause.items():
@@ -144,8 +142,7 @@ def update(table_data: list, set_clause: dict, where_clause: dict) -> list:
                 break
         if match:
             row.update(set_clause)
-            updated = True
-    return table_data if not updated else table_data
+    return table_data
 
 @handle_db_errors
 @confirm_action("удаление записей")

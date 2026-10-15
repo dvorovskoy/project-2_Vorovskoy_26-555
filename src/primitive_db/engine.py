@@ -1,7 +1,7 @@
-# src/primitive_db/engine.py
-# Используем обычный split для максимальной надежности на Windows
-from . import core, utils, parser
 from prettytable import PrettyTable
+
+from . import core, parser, utils
+
 
 def print_help():
     print("\n***Процесс работы с таблицей***")
@@ -91,9 +91,7 @@ def run():
             clean_values = []
             for v in raw_values:
                 v = v.strip('()')
-                if v.startswith('"') and v.endswith('"'):
-                    v = v[1:-1]
-                elif v.startswith("'") and v.endswith("'"):
+                if v.startswith('"') and v.endswith('"') or v.startswith("'") and v.endswith("'"):
                     v = v[1:-1]
                 clean_values.append(v)
 

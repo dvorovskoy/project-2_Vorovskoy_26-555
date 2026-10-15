@@ -1,6 +1,8 @@
 import functools
 import time
 
+# src/primitive_db/decorators.py
+
 def handle_db_errors(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
@@ -23,13 +25,6 @@ def handle_db_errors(func):
         except ValueError as e:
             print(f"Ошибка валидации: {e}")
             if func.__name__ == 'insert':
-                return args[0] if args else []
-            return None
-        except Exception as e:
-            print(f"Произошла непредвиденная ошибка: {e}")
-            if func.__name__ in ['insert', 'select']:
-                return []
-            if func.__name__ in ['update', 'delete']:
                 return args[0] if args else []
             return None
     return wrapper

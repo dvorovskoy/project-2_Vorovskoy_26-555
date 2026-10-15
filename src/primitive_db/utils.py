@@ -1,7 +1,9 @@
 # src/primitive_db/utils.py
 import json
 import os
-from .constants import META_FILE, DATA_DIR
+
+from .constants import DATA_DIR, META_FILE
+
 
 def _get_project_root():
     """Возвращает абсолютный путь к корню проекта (директории src)."""
