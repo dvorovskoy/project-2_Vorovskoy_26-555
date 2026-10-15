@@ -1,7 +1,5 @@
+from . import core, utils, parser
 from prettytable import PrettyTable
-
-from . import core, parser, utils
-
 
 def print_help():
     print("\n***Процесс работы с таблицей***")
@@ -40,7 +38,7 @@ def run():
         if not user_input.strip():
             continue
 
-        # САМЫЙ ПРОСТОЙ СПЛИТ. Никаких умных кавычек.
+        # САМЫЙ ПРОСТОЙ СПЛИТ. Никаких кавычек.
         args = user_input.split()
 
         if not args:
@@ -75,23 +73,24 @@ def run():
 
             table_name = args[2]
 
-            # Берем всё, что идет после слова "values"
+            # Собираем всё, что идет после слова "values"
             values_parts = args[4:]
 
             # Если это одна строка в скобках: ("Test", 1)
             if len(values_parts) == 1 and values_parts[0].startswith("(") and values_parts[0].endswith(")"):
-                # Убираем скобки и разбиваем по запятой
                 inner = values_parts[0][1:-1]
                 raw_values = [v.strip() for v in inner.split(',')]
             else:
                 # Если это отдельные слова: "Test" 1
                 raw_values = values_parts
 
-            # Финальная очистка от кавычек
+            # Финальная очистка от мусора
             clean_values = []
             for v in raw_values:
                 v = v.strip('()')
-                if v.startswith('"') and v.endswith('"') or v.startswith("'") and v.endswith("'"):
+                if v.startswith('"') and v.endswith('"'):
+                    v = v[1:-1]
+                elif v.startswith("'") and v.endswith("'"):
                     v = v[1:-1]
                 clean_values.append(v)
 
