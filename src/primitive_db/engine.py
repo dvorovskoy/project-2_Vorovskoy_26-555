@@ -1,3 +1,5 @@
+# src/primitive_db/engine.py
+# Используем обычный split для максимальной надежности на Windows
 from . import core, utils, parser
 from prettytable import PrettyTable
 
@@ -38,7 +40,7 @@ def run():
         if not user_input.strip():
             continue
 
-        # САМЫЙ ПРОСТОЙ СПЛИТ. Разделяем только по пробелам.
+        # САМЫЙ ПРОСТОЙ СПЛИТ. Никаких умных кавычек.
         args = user_input.split()
 
         if not args:
@@ -57,7 +59,6 @@ def run():
             if len(args) < 2:
                 print("Ошибка: укажите имя таблицы.")
                 continue
-            # args[1] - имя, args[2:] - список "name:str" "age:int"
             metadata = core.create_table(metadata, args[1], args[2:])
             if args[1] in metadata:
                 utils.save_metadata(metadata)
@@ -66,24 +67,33 @@ def run():
                 print("Ошибка: укажите имя таблицы.")
                 continue
             metadata = core.drop_table(metadata, args[1])
-            if args[1] not in metadata:
-                utils.save_metadata(metadata)
 
         elif cmd == "insert":
-            # args[0]=insert, [1]=into, [2]=name, [3]=values
             if len(args) < 4 or args[1] != "into" or args[2] not in metadata or args[3] != "values":
                 print("Ошибка: синтаксис -> insert into <table> values (...)")
                 continue
 
             table_name = args[2]
-            # Берем всё, что идет после слова "values"
-            values = args[4:]
 
-            # Очищаем значения от скобок и запятых, если они есть
+            # Берем всё, что идет после слова "values"
+            values_parts = args[4:]
+
+            # Если это одна строка в скобках: ("Test", 1)
+            if len(values_parts) == 1 and values_parts[0].startswith("(") and values_parts[0].endswith(")"):
+                # Убираем скобки и разбиваем по запятой
+                inner = values_parts[0][1:-1]
+                raw_values = [v.strip() for v in inner.split(',')]
+            else:
+                # Если это отдельные слова: "Test" 1
+                raw_values = values_parts
+
+            # Финальная очистка от кавычек
             clean_values = []
-            for v in values:
-                v = v.strip('(),')
+            for v in raw_values:
+                v = v.strip('()')
                 if v.startswith('"') and v.endswith('"'):
+                    v = v[1:-1]
+                elif v.startswith("'") and v.endswith("'"):
                     v = v[1:-1]
                 clean_values.append(v)
 
@@ -106,13 +116,59 @@ def run():
 
             where_clause = {}
             if len(args) > 3 and args[3] == "where":
-                # Простой парсинг where: берем всё после where и отдаем в parser
-                where_str = " ".join(args[4:])
+                where_parts = args[4:]
+                where_str = " ".join(where_parts)
                 where_clause = parser.parse_where(where_str)
 
             result = core.select(table_data, where_clause)
             _print_select_result(result)
 
-        # (update, delete, info здесь опущены для краткости, они работают так же)
+        elif cmd == "update":
+            if len(args) < 6 or args[3] != "set" or "where" not in args:
+                print("Ошибка: синтаксис -> update <table> set <col> = <val> where ...")
+                continue
+
+            table_name = args[1]
+            if table_name not in metadata:
+                print(f'Ошибка: Таблица "{table_name}" не существует.')
+                continue
+
+            set_str = args[4]
+            where_index = args.index("where")
+            where_str = " ".join(args[where_index+1:])
+
+            set_clause = parser.parse_set(set_str)
+            where_clause = parser.parse_where(where_str)
+
+            table_data = utils.load_table_data(table_name)
+            updated_data = core.update(table_data, set_clause, where_clause)
+            if updated_data is not None and updated_data != table_data:
+                utils.save_table_data(table_name, updated_data)
+
+        elif cmd == "delete":
+            if len(args) < 5 or args[1] != "from" or args[3] != "where" or args[2] not in metadata:
+                print("Ошибка: синтаксис -> delete from <table> where ...")
+                continue
+
+            table_name = args[2]
+            where_str = " ".join(args[4:])
+            where_clause = parser.parse_where(where_str)
+
+            table_data = utils.load_table_data(table_name)
+            updated_data = core.delete(table_data, where_clause)
+            if updated_data is not None and updated_data != table_data:
+                utils.save_table_data(table_name, updated_data)
+
+        elif cmd == "info":
+            if len(args) != 2 or args[1] not in metadata:
+                print("Ошибка: info <table_name>")
+                continue
+            tbl = metadata[args[1]]
+            cols = ", ".join([f"{k}:{v}" for k, v in tbl["columns"].items()])
+            count = len(utils.load_table_data(args[1]))
+            print(f"Таблица: {args[1]}")
+            print(f"Столбцы: {cols}")
+            print(f"Количество записей: {count}")
+
         else:
             print(f"Функции {cmd} нет. Попробуйте снова.")

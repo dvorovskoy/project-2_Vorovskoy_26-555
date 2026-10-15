@@ -1,26 +1,12 @@
+# src/primitive_db/core.py
+import json
 import os
 from .constants import VALID_TYPES, DATA_DIR, META_FILE
 from .utils import load_table_data, save_table_data, save_metadata
+from .decorators import handle_db_errors, log_time, confirm_action, create_cacher
 
-def handle_db_errors(func):
-    def wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except FileNotFoundError:
-            print("Ошибка: Файл данных не найден. Возможно, база данных не инициализирована.")
-            if func.__name__ in ['insert', 'select', 'update', 'delete']:
-                return [] if func.__name__ in ['insert', 'select'] else args[0]
-            return args[0] if args else None
-        except KeyError as e:
-            print(f"Ошибка: Таблица или столбец {e} не найден.")
-            return [] if func.__name__ in ['insert', 'select'] else args[0] if args else None
-        except ValueError as e:
-            print(f"Ошибка валидации: {e}")
-            return [] if func.__name__ == 'insert' else args[0] if args else None
-        except Exception as e:
-            print(f"Произошла непредвиденная ошибка: {e}")
-            return [] if func.__name__ in ['insert', 'select'] else args[0] if args else None
-    return wrapper
+# Создаем экземпляр кэшера для функции select
+select_cache = create_cacher()
 
 @handle_db_errors
 def create_table(metadata: dict, table_name: str, columns: list) -> dict:
@@ -39,10 +25,7 @@ def create_table(metadata: dict, table_name: str, columns: list) -> dict:
             return metadata
         schema[name] = type_
 
-    # Сначала обновляем словарь в памяти
     metadata[table_name] = {"columns": schema}
-
-    # И только потом сохраняем на диск
     save_metadata(metadata)
     save_table_data(table_name, [])
 
@@ -51,6 +34,7 @@ def create_table(metadata: dict, table_name: str, columns: list) -> dict:
     return metadata
 
 @handle_db_errors
+@confirm_action("удаление таблицы")
 def drop_table(metadata: dict, table_name: str) -> dict:
     if table_name not in metadata:
         print(f'Ошибка: Таблица "{table_name}" не существует.')
@@ -71,6 +55,7 @@ def list_tables(metadata: dict) -> None:
             print(f"- {name}")
 
 @handle_db_errors
+@log_time
 def insert(metadata: dict, table_name: str, values: list) -> list:
     if table_name not in metadata:
         print(f'Ошибка: Таблица "{table_name}" не существует.')
@@ -127,19 +112,26 @@ def insert(metadata: dict, table_name: str, values: list) -> list:
     return table_data
 
 @handle_db_errors
+@log_time
 def select(table_data: list, where_clause: dict = None) -> list:
-    if not where_clause:
-        return table_data
-    result = []
-    for row in table_data:
-        match = True
-        for key, value in where_clause.items():
-            if row.get(key) != value:
-                match = False
-                break
-        if match:
-            result.append(row)
-    return result
+    # Ключ для кэша: строковое представление условия
+    cache_key = str(where_clause) if where_clause else "ALL_DATA"
+
+    def fetch_data():
+        if not where_clause:
+            return table_data
+        result = []
+        for row in table_data:
+            match = True
+            for key, value in where_clause.items():
+                if row.get(key) != value:
+                    match = False
+                    break
+            if match:
+                result.append(row)
+        return result
+
+    return select_cache(cache_key, fetch_data)
 
 @handle_db_errors
 def update(table_data: list, set_clause: dict, where_clause: dict) -> list:
@@ -156,6 +148,7 @@ def update(table_data: list, set_clause: dict, where_clause: dict) -> list:
     return table_data if not updated else table_data
 
 @handle_db_errors
+@confirm_action("удаление записей")
 def delete(table_data: list, where_clause: dict) -> list:
     initial_len = len(table_data)
     table_data = [row for row in table_data if not all(row.get(k) == v for k, v in where_clause.items())]

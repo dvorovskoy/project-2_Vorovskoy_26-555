@@ -1,0 +1,25 @@
+# === Virtual Environment ===
+.venv/
+venv/
+
+# === Python Cache and Bytecode ===
+__pycache__/
+*.pyc
+*$py.class
+
+# === Data files (наш JSON и папка data) ===
+db_meta.json
+data/
+
+# === Build and Distribution ===
+dist/
+build/
+*.egg-info/
+
+# === IDE and Editors ===
+.idea/
+.vscode/
+
+# === OS generated files ===
+.DS_Store
+Thumbs.db
